@@ -18,54 +18,52 @@
 
 ## 🛠️ Build
 
-This project is built with CMake presets. [kmpkg](https://github.com/koomx/kmcmake) is **optional** for dependency
-management: when `KMPKG_CMAKE` is set, presets pick it up as `CMAKE_TOOLCHAIN_FILE`; when unset, the toolchain stays
-empty and you can rely on system / manual dependencies.
+This project is built with CMake presets. Three dependency channels (no auto-detection):
+
+- empty: `default` / `test` / `test-bm` / `all` — system `find_package`
+- CPM: `cpm` / `cpm-test` / `cpm-test-bm` / `cpm-all` — `KMCMAKE_USE_CPM=ON`
+- vcpkg: `vcpkg` / `vcpkg-test` / `vcpkg-test-bm` / `vcpkg-all` — needs `VCPKG_ROOT`
+
+Unsuffixed names use Ninja (`build/`). Names ending in `-make` use Unix Makefiles (`build-make/`).
+`default` / `default-make` set no cache variables. Unsuffixed `cpm` / `vcpkg` build libraries only.
 
 ### 0. Prepare the environment
 
 - Linux (Ubuntu 20.04+ / CentOS 7+ Recommended) / macOS / Windows (MSVC + Ninja recommended)
-- CMake >= 3.20
+- CMake >= 3.31
 - GCC >= 9.4 / Clang >= 12 / MSVC (VS 2022+)
-- Optional: install `kmpkg` — see [installation guide](https://kumo-pub.github.io/docs/category/%E6%8C%81%E7%BB%AD%E9%9B%86%E6%88%90----kmpkg)
-- Optional: `ninja` on PATH when using `--preset=ninja`
+- Ninja on PATH for default presets
+- Optional: `VCPKG_ROOT` when using `--preset=vcpkg*`
 
-### 1.Configure the project (optional, kmpkg)
+### 1. Configure the project (optional, vcpkg / CPM)
 
-* For the complete dependencies, refer to [`kmpkg.json`](kmpkg.json)
-* To update the dependency baseline, modify the `baseline` in `default-registry` of [`kmpkg-configuration.json`](kmpkg-configuration.json)
-* the `baseline` can be obtained via `git log`.
-
+* vcpkg: set `VCPKG_ROOT`; put `vcpkg.json` in the project root if you use manifest mode
+* CPM: edit `cmake/*_cpm.cmake` and use `--preset=cpm*`
+* System packages: `--preset=default` or `--preset=test` and `find_package` in `cmake/*_deps.cmake`
 
 ### 2. Build the project
 
 Run in the project root directory:
 
 ```bash
-# Unix Makefiles (default) → build/
+# Ninja → build/
 cmake --preset=default
 cmake --build build -j$(nproc)
 
-# Ninja → build-ninja/  (install ninja first)
-cmake --preset=ninja
-cmake --build build-ninja -j$(nproc)
-```
+# Unix Makefiles → build-make/
+cmake --preset=default-make
+cmake --build build-make -j$(nproc)
 
-#### Using Manual Dependency Management
-
-If you manage dependencies yourself (no kmpkg), leave `KMPKG_CMAKE` unset and use the same presets, or plain CMake:
-
-```shell
-mkdir build
-cd build
-cmake ..
-make -j$(nproc)
+# examples
+# cmake --preset=test
+# cmake --preset=cpm-test
+# cmake --preset=vcpkg-all
 ```
 
 **Note**
 
-- Presets `default` and `ninja` are defined in `CMakePresets.json` at the project root.
-- When managing dependencies manually, make sure CMake’s find_package can locate all required libraries.
+- Presets are defined in `CMakePresets.json` at the project root.
+- When using system packages, make sure CMake’s find_package can locate all required libraries.
 
 ### 3. Run Tests (Optional)
 
@@ -73,6 +71,6 @@ Run in the project root directory:
 
 ```shell
 ctest --test-dir build
-# or, if you used the ninja preset:
-ctest --test-dir build-ninja
+# or, if you used a -make preset:
+ctest --test-dir build-make
 ```

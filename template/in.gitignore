@@ -36,7 +36,7 @@ go.mod
 go.sum
 
 build
-build-ninja
+build-make
 cmake-build-debug
 .idea
 .DS_Store

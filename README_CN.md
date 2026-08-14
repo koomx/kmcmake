@@ -6,7 +6,7 @@
 
 [网站 / 文档](https://pub.kumose.cc/kmcmake/) · [更新日志](CHANGELOG_CN.md)
 
-**当前模板版本：1.6.0**
+**当前模板版本：1.7.0**
 
 ## 项目是什么？
 
@@ -20,13 +20,13 @@
 | 用户配置 | `cmake/` | 依赖、选项、编译选项聚合 |
 | 业务代码 | `<project>/`、`tests/` … | 你的源码 |
 
-日常用 `kmcmake_cc_library`、`kmcmake_cc_binary`、`kmcmake_cc_test` 等声明目标；可选通过 `CMakePresets.json`（`KMPKG_CMAKE`）接入 [kmpkg](https://github.com/koomx/kmpkgcore)。kmpkg 非必须：工具链为空时仍可用系统包构建。也可用 `KMCMAKE_USE_CPM=ON` + `cmake/*_cpm.cmake` 走 FetchContent 风格依赖（官方 [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) 已内化在 `kmcmake/tools/`）。
+日常用 `kmcmake_cc_library`、`kmcmake_cc_binary`、`kmcmake_cc_test` 声明目标。Preset 三条线：空（`default` / `test` / …）、CPM（`cpm` / `cpm-test` / …）、vcpkg（`vcpkg` / `vcpkg-test` / …，需 `VCPKG_ROOT`）。无 `-make` 后缀为 Ninja（`build/`）；`-make` 为 Unix Makefiles（`build-make/`）。CPM 包写在 `cmake/*_cpm.cmake`（官方 [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) 已内化在 `kmcmake/tools/`）。
 
 ## 能力概览
 
 - 分层模板：可升级的 `kmcmake/` vs 可改的 `cmake/`
 - 目标宏：库（静态 + 可选 `SHARE`）、OBJECT、INTERFACE、可执行文件、测试、benchmark、protobuf
-- Preset：`default`（Unix Makefiles → `build/`）、`ninja`（→ `build-ninja/`），含 Windows MSVC + Ninja
+- Preset：默认 Ninja（`build/`）；Makefile 对应名加 `-make`（`build-make/`）。三条线：空 / CPM / vcpkg × `default`/`test`/`test-bm`/`all`
 - 分架构 SIMD 探测（x86 / ARM）→ `KMCMAKE_CXX_OPTIONS` 与生成的 `version.h` 宏
 - 打包钩子（CPack / deb / rpm）及可选 Python 打包脚本
 - CI 使用 [x-ci](https://github.com/koomx/x-ci) `@v2`（Linux glibc/musl/CentOS、macOS、Windows MSVC）
@@ -36,26 +36,28 @@
 
 | 文档 | 用途 |
 |------|------|
-| [AI.md](template/docs/AI.md) | AI 上下文：约束、目录、API、约定 |
+| [AI.md](template/docs/AI.md) | AI 上下文：约束、目录、API |
+| [AI_MIGRATE.md](template/docs/AI_MIGRATE.md) | 普通 CMake → kmcmake（`user_option` / `deps` / `cxx_config`） |
+| [AI_UPGRADE.md](template/docs/AI_UPGRADE.md) | 已有 kmcmake → **1.7.0** 检查表 |
+| [VCPKG.md](template/docs/VCPKG.md) | 标准 vcpkg/vckgctl port；对照例子 [`vcpkg.json`](template/docs/vcpkg.json) + [`portfile.cmake`](template/docs/portfile.cmake) |
 | [c_cpp_project_rules.md](template/docs/c_cpp_project_rules.md) | C/C++ 源码与工程约定 |
-| [AI_UPGRADE.md](template/docs/AI_UPGRADE.md) | 旧结构 → 分层 `kmcmake/` + `cmake/` 迁移 |
-| [AI_UPGRADE_1_5.md](template/docs/AI_UPGRADE_1_5.md) | 1.4.x / 早期 1.5 → **1.5.0+** 升级（面向 AI 的操作步骤） |
 
 ### 给 AI Agent
 
 **改本仓库或升级下游工程前，请自行阅读上表文档**（不要凭记忆猜测）：
 
 1. 一律先读 [`template/docs/AI.md`](template/docs/AI.md) 与 [`c_cpp_project_rules.md`](template/docs/c_cpp_project_rules.md)。
-2. 升级已有 1.4 分层工程 → 按 [`template/docs/AI_UPGRADE_1_5.md`](template/docs/AI_UPGRADE_1_5.md)（在 `/tmp` 生成骨架、替换 `kmcmake/`、拷贝 `CMakePresets.json`）。
-3. 仍是 pre-v1 扁平结构 → 先走 [`template/docs/AI_UPGRADE.md`](template/docs/AI_UPGRADE.md)。
+2. 普通 CMake 迁过来 → [`template/docs/AI_MIGRATE.md`](template/docs/AI_MIGRATE.md)。
+3. 升级已有 kmcmake 工程 → [`template/docs/AI_UPGRADE.md`](template/docs/AI_UPGRADE.md)。
+4. 做成 vcpkg port → [`template/docs/VCPKG.md`](template/docs/VCPKG.md)。
 
 从 `template/` 执行 `cmake --install` 时，这些文件会安装到生成项目的 `docs/` 目录。
 
 ## 环境要求
 
 - **生成**本仓库模板：CMake **≥ 3.31**
-- **生成后的工程**：CMake **≥ 3.20**，C++17+（GCC / Clang / AppleClang / MSVC）
-- 可选：[kmpkg](https://github.com/koomx/kmpkgcore)、[kmdo](https://github.com/koomx/kmdo)、Ninja
+- **生成后的工程**：CMake **≥ 3.31**，C++17+（GCC / Clang / AppleClang / MSVC）
+- 可选：[vckgctl](https://github.com/koomx)（`gencmake`）、Ninja
 
 ## 快速开始
 
@@ -64,21 +66,25 @@
 ```bash
 cmake -S ./template -B build-template -DCHANGEME=myproject
 cmake --install build-template --prefix /path/to/myproject
+# 教学例子（foo / xxd / tests）：加 -DKMCMAKE_GEN_EXAMPLES=ON
 ```
 
-### 或使用 kmdo（若已安装）
+### 或使用 vckgctl
 
 ```bash
-kmdo kmpkg gencmake -n myproject -o /path/to/myproject
+vckgctl gencmake -n myproject -o /path/to/myproject
 ```
 
 ### 构建生成后的工程
 
 ```bash
 cd /path/to/myproject
-# 可选：kmpkg bootstrap 后设置 KMPKG_HOME / KMPKG_CMAKE
-cmake --preset=default -DKMCMAKE_BUILD_TEST=ON    # 或 --preset=ninja
-cmake --build build --parallel                    # 或 build-ninja
+cmake --preset=default          # Ninja，空依赖，option 默认值
+# cmake --preset=test
+# cmake --preset=cpm-test
+# cmake --preset=vcpkg-all      # 需 VCPKG_ROOT
+# cmake --preset=default-make   # Unix Makefiles → build-make/
+cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
@@ -89,7 +95,7 @@ ctest --test-dir build --output-on-failure
 ```
 myproject/
 ├── CMakeLists.txt          # 入口：kmcmake_module + cmake/*
-├── CMakePresets.json       # default + ninja（经 $KMPKG_CMAKE 接 kmpkg）
+├── CMakePresets.json       # 空 / cpm / vcpkg × Ninja + -make
 ├── docs/                   # AI.md、c_cpp_project_rules.md、升级指南
 ├── kmcmake/                # 框架 — 升级时整树替换
 │   ├── kmcmake_module.cmake
@@ -108,7 +114,7 @@ myproject/
 
 ## 升级已有工程
 
-不要覆盖 `cmake/` 或业务源码。在 `/tmp` 生成新骨架，再替换 `kmcmake/` 并拷贝 `CMakePresets.json`。完整步骤见 [AI_UPGRADE_1_5.md](template/docs/AI_UPGRADE_1_5.md)。
+不要覆盖 `cmake/` 或业务源码。在 `/tmp` 生成新骨架，再替换 `kmcmake/` 并拷贝 `CMakePresets.json`。检查表：[AI_UPGRADE.md](template/docs/AI_UPGRADE.md)。普通 CMake 迁入：[AI_MIGRATE.md](template/docs/AI_MIGRATE.md)。
 
 ## 许可证
 

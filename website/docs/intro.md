@@ -15,11 +15,13 @@ Build a modern C++ project with kmcmake in minutes.
 
 ## Generate a Project
 
-### Recommended: use `kmdo`
+### Recommended: use `vckgctl`
 
 ```bash title="bash"
-kmdo kmpkg gencmake -n your-project-name -o your-path
+vckgctl gencmake -n your-project-name -o your-path
 ```
+
+Teaching demos (foo / xxd / tests): pass `-DKMCMAKE_GEN_EXAMPLES=ON` into the template configure.
 
 ### Alternative: generate from the template manually
 

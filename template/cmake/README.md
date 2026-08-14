@@ -1,10 +1,10 @@
-# user defines
+# user cmake/ — load order
+
+# 1. *_user_option.cmake  — option() / KMCMAKE_* overrides (before deps)
+# 2. *_deps.cmake         — find_package / KMCMAKE_DEPS_LINK (if(option))
+# 3. *_cxx_config.cmake   — KMCMAKE_CXX_OPTIONS from flags + deps
+# 4. *_cpm.cmake          — CPMAddPackage (only when KMCMAKE_USE_CPM)
 #
-# - *_user_option.cmake  — overrides (SIMD, KMCMAKE_USE_CPM, …)
-# - *_cpm.cmake          — CPMAddPackage list (loaded when KMCMAKE_USE_CPM=ON)
-# - *_deps.cmake         — find_package / KMCMAKE_DEPS_LINK
-# - *_cxx_config.cmake   — flag aggregation
-#
-# CPM.cmake itself is under kmcmake/tools/ (framework); do not copy it here.
+# See docs/AI_MIGRATE.md. CPM.cmake is under kmcmake/tools/; do not copy it here.
 
 you can define things here

@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 ####################################################################################
-# generate by kmcmake package manager tools for kmdo
+# generate by kmcmake (vckgctl gencmake / cmake -S template)
 # https://github.com/koomx/kmcmake
 ####################################################################################
 cmake_minimum_required(VERSION 3.31)
@@ -24,8 +24,10 @@ if(NOT CHANGEME)
     message(FATAL_ERROR "you must set up project name")
 endif ()
 
+option(KMCMAKE_GEN_EXAMPLES "install teaching demos into the generated project" OFF)
+
 string(TIMESTAMP CURRENT_DATE "%Y-%m-%d")
-set(TM_KMCMAKE_VERSION 1.6.0)
+set(TM_KMCMAKE_VERSION 1.7.0)
 string(TOUPPER ${CHANGEME} CHANGEME_UP)
 string(TOLOWER ${CHANGEME} CHANGEME_LOW)
 
@@ -47,11 +49,6 @@ file(COPY ${PROJECT_SOURCE_DIR}/cmake/deb DESTINATION ${PROJECT_BINARY_DIR}/cmak
 file(COPY ${PROJECT_SOURCE_DIR}/cmake/rpm DESTINATION ${PROJECT_BINARY_DIR}/cmake)
 install(DIRECTORY ${PROJECT_BINARY_DIR}/cmake DESTINATION .)
 
-# examples
-configure_file(${PROJECT_SOURCE_DIR}/examples/foo_ex.cc.in ${PROJECT_BINARY_DIR}/examples/foo_ex.cc)
-install(FILES ${PROJECT_BINARY_DIR}/examples/foo_ex.cc DESTINATION examples)
-install(FILES ${PROJECT_SOURCE_DIR}/examples/CMakeLists.txt DESTINATION examples)
-
 # CMakeLists.txt
 install(FILES ${PROJECT_BINARY_DIR}/CMakeLists.txt DESTINATION .)
 install(FILES ${PROJECT_SOURCE_DIR}/CMakePresets.json DESTINATION .)
@@ -67,36 +64,57 @@ install(FILES ${PROJECT_SOURCE_DIR}/build-pypi-linux.sh DESTINATION .)
 install(FILES ${PROJECT_SOURCE_DIR}/release-pypi-linux.sh DESTINATION .)
 install(FILES ${PROJECT_SOURCE_DIR}/requirements.txt DESTINATION .)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/docs DESTINATION .)
-# benchmark
+# benchmark (always: configure_file for config.h.in)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/benchmark DESTINATION .)
 # kmcmake
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/kmcmake DESTINATION .)
 
-# CHANGEME
-
-configure_file(${PROJECT_SOURCE_DIR}/changeme/foo.cc.in ${PROJECT_BINARY_DIR}/${CHANGEME}/foo.cc)
-configure_file(${PROJECT_SOURCE_DIR}/changeme/main.cc.in ${PROJECT_BINARY_DIR}/${CHANGEME}/main.cc)
-install(FILES ${PROJECT_SOURCE_DIR}/changeme/api.h DESTINATION ${CHANGEME})
-install(FILES ${PROJECT_SOURCE_DIR}/changeme/CMakeLists.txt DESTINATION ${CHANGEME})
-install(FILES ${PROJECT_SOURCE_DIR}/changeme/foo.h DESTINATION ${CHANGEME})
-install(FILES ${PROJECT_BINARY_DIR}/${CHANGEME}/main.cc DESTINATION ${CHANGEME})
-install(FILES ${PROJECT_SOURCE_DIR}/changeme/version.h.in DESTINATION ${CHANGEME})
-install(FILES ${PROJECT_BINARY_DIR}/${CHANGEME}/foo.cc DESTINATION ${CHANGEME})
+# CHANGEME — always: skills INTERFACE + version.h.in
 configure_file(${PROJECT_SOURCE_DIR}/changeme/skills.h.in ${PROJECT_BINARY_DIR}/${CHANGEME}/skills.h @ONLY)
 install(FILES ${PROJECT_BINARY_DIR}/${CHANGEME}/skills.h DESTINATION ${CHANGEME})
-install(FILES ${PROJECT_SOURCE_DIR}/changeme/assets/hello.txt DESTINATION ${CHANGEME}/assets)
+install(FILES ${PROJECT_SOURCE_DIR}/changeme/version.h.in DESTINATION ${CHANGEME})
+if (KMCMAKE_GEN_EXAMPLES)
+    install(FILES ${PROJECT_SOURCE_DIR}/changeme/CMakeLists.examples.txt DESTINATION ${CHANGEME} RENAME CMakeLists.txt)
+else ()
+    install(FILES ${PROJECT_SOURCE_DIR}/changeme/CMakeLists.txt DESTINATION ${CHANGEME})
+endif ()
 
-# test
-configure_file(${PROJECT_SOURCE_DIR}/tests/foo_test.cc.in ${PROJECT_BINARY_DIR}/tests/foo_test.cc)
-configure_file(${PROJECT_SOURCE_DIR}/tests/foo_doctest.cc.in ${PROJECT_BINARY_DIR}/tests/foo_doctest.cc)
-configure_file(${PROJECT_SOURCE_DIR}/tests/xxd_test.cc.in ${PROJECT_BINARY_DIR}/tests/xxd_test.cc)
-configure_file(${PROJECT_SOURCE_DIR}/tests/cpm_test.cc.in ${PROJECT_BINARY_DIR}/tests/cpm_test.cc)
-install(FILES  ${PROJECT_BINARY_DIR}/tests/foo_test.cc DESTINATION tests)
-install(FILES  ${PROJECT_BINARY_DIR}/tests/foo_doctest.cc DESTINATION tests)
-install(FILES  ${PROJECT_BINARY_DIR}/tests/xxd_test.cc DESTINATION tests)
-install(FILES  ${PROJECT_BINARY_DIR}/tests/cpm_test.cc DESTINATION tests)
-install(FILES  ${PROJECT_SOURCE_DIR}/tests/args_test.cc DESTINATION tests)
-install(FILES  ${PROJECT_SOURCE_DIR}/tests/CMakeLists.txt DESTINATION tests)
-install(FILES  ${PROJECT_SOURCE_DIR}/tests/pass_test.cc DESTINATION tests)
-install(FILES  ${PROJECT_SOURCE_DIR}/tests/raw_test.cc DESTINATION tests)
-install(FILES  ${PROJECT_SOURCE_DIR}/tests/config.h.in DESTINATION tests)
+# tests — always: config.h.in + CMakeLists with configure_file
+install(FILES ${PROJECT_SOURCE_DIR}/tests/config.h.in DESTINATION tests)
+if (KMCMAKE_GEN_EXAMPLES)
+    install(FILES ${PROJECT_SOURCE_DIR}/tests/CMakeLists.examples.txt DESTINATION tests RENAME CMakeLists.txt)
+else ()
+    install(FILES ${PROJECT_SOURCE_DIR}/tests/CMakeLists.txt DESTINATION tests)
+endif ()
+
+# examples — always a CMakeLists stub
+if (KMCMAKE_GEN_EXAMPLES)
+    install(FILES ${PROJECT_SOURCE_DIR}/examples/CMakeLists.examples.txt DESTINATION examples RENAME CMakeLists.txt)
+else ()
+    install(FILES ${PROJECT_SOURCE_DIR}/examples/CMakeLists.txt DESTINATION examples)
+endif ()
+
+if (KMCMAKE_GEN_EXAMPLES)
+    configure_file(${PROJECT_SOURCE_DIR}/changeme/foo.cc.in ${PROJECT_BINARY_DIR}/${CHANGEME}/foo.cc)
+    configure_file(${PROJECT_SOURCE_DIR}/changeme/main.cc.in ${PROJECT_BINARY_DIR}/${CHANGEME}/main.cc)
+    install(FILES ${PROJECT_SOURCE_DIR}/changeme/api.h DESTINATION ${CHANGEME})
+    install(FILES ${PROJECT_SOURCE_DIR}/changeme/foo.h DESTINATION ${CHANGEME})
+    install(FILES ${PROJECT_BINARY_DIR}/${CHANGEME}/main.cc DESTINATION ${CHANGEME})
+    install(FILES ${PROJECT_BINARY_DIR}/${CHANGEME}/foo.cc DESTINATION ${CHANGEME})
+    install(FILES ${PROJECT_SOURCE_DIR}/changeme/assets/hello.txt DESTINATION ${CHANGEME}/assets)
+
+    configure_file(${PROJECT_SOURCE_DIR}/tests/foo_test.cc.in ${PROJECT_BINARY_DIR}/tests/foo_test.cc)
+    configure_file(${PROJECT_SOURCE_DIR}/tests/foo_doctest.cc.in ${PROJECT_BINARY_DIR}/tests/foo_doctest.cc)
+    configure_file(${PROJECT_SOURCE_DIR}/tests/xxd_test.cc.in ${PROJECT_BINARY_DIR}/tests/xxd_test.cc)
+    configure_file(${PROJECT_SOURCE_DIR}/tests/cpm_test.cc.in ${PROJECT_BINARY_DIR}/tests/cpm_test.cc)
+    install(FILES ${PROJECT_BINARY_DIR}/tests/foo_test.cc DESTINATION tests)
+    install(FILES ${PROJECT_BINARY_DIR}/tests/foo_doctest.cc DESTINATION tests)
+    install(FILES ${PROJECT_BINARY_DIR}/tests/xxd_test.cc DESTINATION tests)
+    install(FILES ${PROJECT_BINARY_DIR}/tests/cpm_test.cc DESTINATION tests)
+    install(FILES ${PROJECT_SOURCE_DIR}/tests/args_test.cc DESTINATION tests)
+    install(FILES ${PROJECT_SOURCE_DIR}/tests/pass_test.cc DESTINATION tests)
+    install(FILES ${PROJECT_SOURCE_DIR}/tests/raw_test.cc DESTINATION tests)
+
+    configure_file(${PROJECT_SOURCE_DIR}/examples/foo_ex.cc.in ${PROJECT_BINARY_DIR}/examples/foo_ex.cc)
+    install(FILES ${PROJECT_BINARY_DIR}/examples/foo_ex.cc DESTINATION examples)
+endif ()

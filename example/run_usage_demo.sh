@@ -25,7 +25,7 @@ prepare() {
 
 generate_project() {
   log "Generate project from template"
-  cmake -S "${ROOT_DIR}/template" -B "${WORK_DIR}/template_build" -DCHANGEME="${PROJECT_NAME}"
+  cmake -S "${ROOT_DIR}/template" -B "${WORK_DIR}/template_build" -DCHANGEME="${PROJECT_NAME}" -DKMCMAKE_GEN_EXAMPLES=ON
   cmake --install "${WORK_DIR}/template_build" --prefix "${PROJECT_DIR}"
 }
 

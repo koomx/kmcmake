@@ -1,5 +1,13 @@
 # 更新日志
 
+## 2026-08-15 — v1.7.0
+
+### 文档
+- `AI_MIGRATE.md`：普通 CMake → kmcmake（`user_option` → `deps` → `cxx_config`）。
+- `AI_UPGRADE.md`：已有 kmcmake → 1.7 检查表（`/tmp` 骨架、替换 `kmcmake/`）。
+- `VCPKG.md`：标准 overlay/registry port，只用 `vcpkg_cmake_configure` / `install` / `config_fixup`。
+- `AI_UPGRADE_1_5.md` 改为指向 `AI_UPGRADE.md` 的短页。
+
 ## 2026-07-25 — v1.6.0
 
 ### 新功能
@@ -13,6 +21,8 @@
 - `.gitattributes`：`assets/**` 标记 `-text`，避免 Windows CRLF 破坏嵌入字节；`base_xxd_test` 同时接受 LF/CRLF。
 - 默认附带 `.clang-format`（与 xhash 一致，基于 WebKit 风格），供 IDE / `clang-format` 使用。
 - 新增 `docs/c_cpp_project_rules.md`：生成工程的 C/C++ 源码、目录、依赖与 AI 修改约定。
+- `CMakePresets.json`：默认 Ninja（`build/`）；Unix Makefiles 用 `-make`（`build-make/`）。三条依赖线（空 / CPM / vcpkg）× `default`/`test`/`test-bm`/`all`。不再注入 `KMPKG_CMAKE`。
+- 默认生成只装 `${PROJECT}::skills`（`skills.h` + `version.h`）。教学例子（foo / xxd / tests / examples）需 `-DKMCMAKE_GEN_EXAMPLES=ON`。生成入口 `vckgctl gencmake`（kmdo 已废弃）。
 
 ## 2026-07-21 — v1.5.1
 

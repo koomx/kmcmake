@@ -1,174 +1,74 @@
-# kmcmake Upgrade Guide (for AI Agents)
+# kmcmake → 1.7.0 (AI)
 
-This document describes how to upgrade an old-format kmcmake project to the
-current framework structure. AI agents should read this when tasked with
-migrating a legacy kmcmake project.
+Upgrade an **existing kmcmake project** to this template. Do not install the template into the real tree.
 
-## Overview
+**Target:** `1.7.0`  
+If the repo is still a **pre-1.4 flat** tree (no `kmcmake/` vs `cmake/` split), stop and split that first (old `AI_UPGRADE.md` SIMD/layout notes). Then come back here.
 
-The old kmcmake (pre-v1) had a flat structure with inline SIMD detection,
-thick user config files, and no clear separation between framework and user
-code. The current version introduces:
+## DO / DO NOT
 
-- Strict `kmcmake/` (framework) vs `cmake/` (user config) layer separation
-- Per-architecture SIMD detection under `kmcmake/arch/`
-- A dedicated `kmcmake_compiler_flags.cmake` module
-- Thin `<project>_cxx_config.cmake` that just aggregates
-- `KMCMAKE_CXX_OPTIONS` as the single aggregated flag variable
-- `KMCMAKE_ARCH_ENABLE_*` exported as 0/1 integers for version.h
-- `skills.h` for AI-readable project summaries
-- `docs/AI.md` for AI context and API reference
+| DO | DO NOT |
+|----|--------|
+| Generate a skeleton under `/tmp/<proj>_upgrade` | Patch `kmcmake/` file-by-file |
+| Replace real `kmcmake/` from that skeleton | Overwrite `cmake/`, `<project>/`, `tests/`, `examples/` |
+| Copy `CMakePresets.json` and `docs/` from the skeleton | `cmake --install` of the template onto the real prefix |
+| Backup `kmcmake/` and `CMakePresets.json` | Delete `*.bak-*` until the user confirms |
 
-## What Changed
+## Procedure
 
-| Old | New | Reason |
-|-----|-----|--------|
-| SIMD detection inline in `kmcmake_module.cmake` | `kmcmake/arch/kmcmake_arch.cmake` + per-arch detect/level | Architecture isolation, maintainability |
-| `kmcmake/tools/simd_detect.cmake` | (deleted) | Replaced by arch subsystem |
-| Compiler flags in `cmake/changeme_cxx_config.cmake` | `kmcmake/tools/kmcmake_compiler_flags.cmake` | Framework ownership, reusability |
-| `kmcmake_apply_runtime_simd()` inline | (removed) | SIMD flags now set by arch level files |
-| `KMCMAKE_SIMD_LEVEL_*_VAL` compat macros | (removed) | Use `KMCMAKE_ARCH_ENABLE_*` (0/1) instead |
-| `cmake/changeme_test.cmake` | (deleted) | Test config folded into main flow |
-| `USER_CXX_FLAGS` | `KMCMAKE_CXX_OPTIONS` | Standardized variable name |
-| Mixed `COPTS` / `CXXOPTS` usage | Use `CXXOPTS ${KMCMAKE_CXX_OPTIONS}` | Consistent |
-| `KMCMAKE_ARCH_DEFS` | (removed) | Never populated |
+```bash
+PROJ=<name>
+TMP=/tmp/${PROJ}_upgrade
+KMCMAKE_SRC=<path-to-kmcmake-repo>
+REAL=<path-to-real-project>
 
-## Migration Steps
+rm -rf "$TMP"
+cmake -S "$KMCMAKE_SRC/template" -B "$TMP/build" -DCHANGEME="$PROJ"
+# Teaching foo/xxd/tests are not required for upgrade:
+# cmake ... -DKMCMAKE_GEN_EXAMPLES=ON
+cmake --install "$TMP/build" --prefix "$TMP/skel"
 
-### Step 1: Separate framework from user config
-
-Ensure `kmcmake/` contains only framework files (upgrade-safe) and `cmake/`
-contains user modifications:
-
-```
-project/
-├── kmcmake/                    # Framework — DO NOT MODIFY after migration
-│   ├── kmcmake_module.cmake
-│   ├── kmcmake_option.cmake
-│   ├── arch/
-│   │   ├── kmcmake_arch.cmake
-│   │   ├── x86/kmcmake_arch_detect.cmake
-│   │   ├── x86/kmcmake_arch_level.cmake
-│   │   ├── arm/kmcmake_arch_detect.cmake
-│   │   └── arm/kmcmake_arch_level.cmake
-│   └── tools/
-│       ├── kmcmake_compiler_flags.cmake
-│       ├── default_setting.cmake
-│       ├── kmcmake_cc_library.cmake
-│       ├── kmcmake_cc_test.cmake
-│       ├── kmcmake_cc_binary.cmake
-│       ├── kmcmake_cc_interface.cmake
-│       ├── kmcmake_cc_object.cmake
-│       ├── kmcmake_cc_benchmark.cmake
-│       ├── kmcmake_cc_proto.cmake
-│       ├── kmcmake_cc_proto_object.cmake
-│       └── git_commit.cmake
-└── cmake/                      # User config — MODIFY FREELY
-    ├── <project>_user_option.cmake
-    ├── <project>_deps.cmake
-    ├── <project>_cxx_config.cmake
-    ├── <project>_cpack_config.cmake
-    └── <project>_config.cmake.in
+cp -a "$REAL/kmcmake" "$REAL/kmcmake.bak-pre-1.7.0"
+if [ -f "$REAL/CMakePresets.json" ]; then
+  cp -a "$REAL/CMakePresets.json" "$REAL/CMakePresets.json.bak-pre-1.7.0"
+fi
+rm -rf "$REAL/kmcmake"
+cp -a "$TMP/skel/kmcmake" "$REAL/kmcmake"
+cp -a "$TMP/skel/CMakePresets.json" "$REAL/CMakePresets.json"
+mkdir -p "$REAL/docs"
+cp -a "$TMP/skel/docs/." "$REAL/docs/"
 ```
 
-### Step 2: Replace SIMD detection
+If the project had extra presets, re-add them on top of skeleton `gen-*` / `deps-*` / `feat-*`. `default` is Ninja + empty toolchain (not `KMPKG_CMAKE`).
 
-Old (inline in `kmcmake_module.cmake` or `simd_detect.cmake`):
-```cmake
-# ~250 lines of inline CheckCXXSourceRuns for each feature,
-# mixed with compiler ID checks and flag selection
+## Checklist (1.4 / 1.5 / 1.6 → 1.7)
+
+Walk `cmake/` and root `CMakeLists.txt`. Tick these; do not “fix” product sources unless a row fails.
+
+| Check | Where | Pass |
+|-------|--------|------|
+| `include(<proj>_user_option OPTIONAL)` **before** deps and cxx | root `CMakeLists.txt` | |
+| Project `option()` / CACHE overrides live in `*_user_option.cmake` | `cmake/` | |
+| All product `find_package` / `KMCMAKE_DEPS_LINK` in `*_deps.cmake` | `cmake/` | |
+| `if (KMCMAKE_USE_CPM)` includes `*_cpm.cmake` **before** other finds | `*_deps.cmake` | |
+| `KMCMAKE_CXX_OPTIONS` aggregated only in `*_cxx_config.cmake` | `cmake/` | |
+| Targets use `CXXOPTS ${KMCMAKE_CXX_OPTIONS}` and `LINKS`/`PLINKS ${KMCMAKE_DEPS_LINK}` | `<project>/CMakeLists.txt` | |
+| Default export still has at least one PUBLIC target (1.7 skeleton: `NAME skills` + `skills.h` + `version.h`) | `<project>/CMakeLists.txt` | |
+| No `CMAKE_TOOLCHAIN_FILE=$env{KMPKG_CMAKE}` on `default` | `CMakePresets.json` | |
+| Ninja → `build/`; Make → `*-make` / `build-make/` | `CMakePresets.json` | |
+| `tests/CMakeLists.txt` and `benchmark/CMakeLists.txt` still `configure_file(config.h.in …)` | tests / benchmark | |
+| Root `.clang-format` present if the project wants the template style | repo root | |
+| `docs/AI.md`, `c_cpp_project_rules.md`, `AI_MIGRATE.md`, this file | `docs/` | |
+
+`api` → `skills`: only rename if the old INTERFACE was the unused template `api` target. Do not rename a real product library called `api`.
+
+## Verify (only if the user asked to build)
+
+```bash
+cd "$REAL"
+rm -rf build build-make
+cmake --preset=default
+cmake --build build --parallel
 ```
 
-New:
-- `kmcmake/arch/kmcmake_arch.cmake` — entry point, routes by `CMAKE_SYSTEM_PROCESSOR`
-- `kmcmake/arch/x86/kmcmake_arch_detect.cmake` — per-feature detection, exports `KMCMAKE_X86_HAS_*`
-- `kmcmake/arch/x86/kmcmake_arch_level.cmake` — level-by-level enable, exports `KMCMAKE_ARCH_ENABLE_*`
-- `kmcmake/arch/arm/kmcmake_arch_detect.cmake` — ARM detection
-- `kmcmake/arch/arm/kmcmake_arch_level.cmake` — ARM level enable
-
-Include in `kmcmake_module.cmake`:
-```cmake
-include(kmcmake_option)
-include(default_setting)
-# ...
-include(kmcmake_cc_library)
-include(kmcmake_cc_test)
-include(kmcmake_cc_binary)
-# etc.
-```
-
-SIMD is loaded on-demand via `<project>_cxx_config.cmake`:
-```cmake
-include(kmcmake_compiler_flags)     # → KMCMAKE_BASE_CXX_FLAGS
-include(kmcmake_arch)               # → KMCMAKE_SIMD_CXX_FLAGS + KMCMAKE_ARCH_ENABLE_*
-set(KMCMAKE_CXX_OPTIONS
-    ${KMCMAKE_BASE_CXX_FLAGS}
-    ${KMCMAKE_SIMD_CXX_FLAGS}
-    ${KMCMAKE_RANDEN_FLAGS}
-)
-```
-
-### Step 3: Update compiler flags
-
-Old (`<project>_cxx_config.cmake`):
-```cmake
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-    set(MY_CXX_FLAGS "-Wall -Wextra ...")
-elseif(...)
-    # etc.
-endif()
-```
-
-New: flags are in `kmcmake_compiler_flags.cmake`. The `<project>_cxx_config.cmake`
-is a thin aggregator (≈30 lines).
-
-### Step 4: Replace SIMD compat macros
-
-Old `version.h.in`:
-```c
-#define KMCMAKE_SIMD_LEVEL_SSE_VAL    1
-#define KMCMAKE_SIMD_LEVEL_AVX2_VAL   1
-```
-
-New `version.h.in`:
-```c
-#define @CHANGEME_UP@_SIMD_ENABLE_AVX2   @KMCMAKE_ARCH_ENABLE_AVX2@
-```
-
-The `KMCMAKE_ARCH_ENABLE_*` variables are converted from BOOL to 0/1 integers
-by `_kmcmake_to_int()` in `kmcmake_arch.cmake`.
-
-### Step 5: Add skills.h
-
-Create `<project>/skills.h.in` with Doxygen `///` style project summary.
-See `docs/AI.md` → `## skills.h Convention` for details.
-
-### Step 6: Add AI.md
-
-Copy `docs/AI.md` to the project root `docs/` directory. This file provides
-AI agents with project context, API reference, and behavioral constraints.
-
-### Step 7: Clean up variables
-
-- `USER_CXX_FLAGS` → `KMCMAKE_CXX_OPTIONS`
-- Legacy `KMCMAKE_SIMD_LEVEL_*_VAL` → `KMCMAKE_ARCH_ENABLE_*`
-- Remove any `KMCMAKE_ARCH_DEFS` references
-- Remove any `KMCMAKE_BASE_TEST_FLAGS` references (was never consumed)
-- Remove commented-out `include(require_gtest)` etc. from `<project>_deps.cmake`
-- Remove commented-out `include(<project>_test)` from `CMakeLists.txt`
-
-## Detection Checklist
-
-After migration, verify:
-
-- [ ] `cmake -S . -B build` succeeds
-- [ ] `KMCMAKE_CXX_OPTIONS` contains base flags + SIMD flags + randen flags
-- [ ] `version.h` has `*_SIMD_ENABLE_*` as 0/1 integers
-- [ ] `kmcmake/` contains only framework files
-- [ ] `cmake/` contains only user config files
-- [ ] No stale `simd_detect.cmake` references remain
-- [ ] No stale `changeme_test.cmake` references remain
-- [ ] No `USER_CXX_FLAGS` usage remains
-- [ ] No `KMCMAKE_SIMD_LEVEL_*_VAL` usage remains
-- [ ] `skills.h` exists and is readable
-- [ ] `docs/AI.md` exists
+Use `--preset=test` / `vcpkg-test` / `cpm-test` as the project actually builds.

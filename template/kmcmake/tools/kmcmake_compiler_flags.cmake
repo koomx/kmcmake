@@ -17,8 +17,8 @@
 # AI:   KMCMAKE_BASE_CXX_FLAGS   - base compiler flags for current compiler
 # AI:   KMCMAKE_BASE_LINK_FLAGS  - linker flags for current compiler
 # AI:
-# AI: Also sets CMAKE_CXX_STANDARD, CMAKE_BUILD_TYPE defaults, and
-# AI: debug/release mode flags (CMAKE_CXX_FLAGS_*).
+# AI: Debug/release mode flags (CMAKE_CXX_FLAGS_*).
+# AI: CMAKE_CXX_STANDARD / CMAKE_BUILD_TYPE defaults live in cmake/*_cxx_config.cmake.
 
 # ============================================================
 # Per-compiler flag definitions

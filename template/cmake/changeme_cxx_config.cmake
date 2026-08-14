@@ -26,8 +26,14 @@
 include(kmcmake_compiler_flags)
 include(kmcmake_arch)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Default 17 only if unset. Outer -DCMAKE_CXX_STANDARD=, CMakePresets,
+# parent add_subdirectory, or *_user_option.cmake can set it first.
+if (NOT CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 17)
+endif ()
+if (NOT CMAKE_CXX_STANDARD_REQUIRED)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif ()
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif ()

@@ -2,7 +2,7 @@
 
 This file describes the kmcmake template structure and conventions for AI assistants.
 
-**Also read:** `docs/c_cpp_project_rules.md` — C/C++ source style, layout, deps, and edit discipline.
+**Also read:** `docs/c_cpp_project_rules.md`, `docs/AI_MIGRATE.md` (plain CMake → kmcmake), `docs/AI_UPGRADE.md` (existing kmcmake → 1.7), `docs/VCPKG.md` (standard port).
 
 ## AI Constraints
 
@@ -44,7 +44,7 @@ rebase other branches unless the user clearly says to (e.g. “merge feature/foo
 - Do not run `cmake --build` or `ctest` unless explicitly asked to verify a change
 - Do not read files you already have context for — reuse what you've been given. Only re-read when the content has likely changed (e.g. after an edit you just made).
 - Do not suggest adding new dependencies, libraries, or external tools without asking first
-- Do not run `kmpkg install` in the project tree — the CMake toolchain (preset `KMPKG_CMAKE`) resolves deps on configure
+- Do not run `vcpkg install` / `kmpkg install` in the project tree — a vcpkg preset toolchain resolves deps on configure
 - Do not change `kmcmake/` framework files unless the task specifically targets them
 - Do not reformat, restyle, or rename variables/functions as side work — stick to the task
 - Batch independent operations (reads, searches, parallel commands) to reduce round-trips
@@ -63,8 +63,10 @@ When the user gives a task, follow this sequence:
 kmcmake is a CMake-based C/C++ build system. The `template/` directory is the
 skeleton used to bootstrap new projects. The generation flow is:
 
-1. `cmake -S ./template -B build -DCHANGEME=myproject`
+1. `cmake -S ./template -B build -DCHANGEME=myproject`  (add `-DKMCMAKE_GEN_EXAMPLES=ON` for teaching demos)
 2. `cmake --install build --prefix /path/to/project`
+
+Or `vckgctl gencmake -n myproject -o /path/to/project`. Default install is `${PROJECT}::skills` only (`skills.h`, `version.h`).
 
 During step 1, CMake processes `@VAR@` placeholders via `configure_file()`.
 During step 2, the rendered files are copied to the target directory.
@@ -99,17 +101,34 @@ All placeholder variables used in `*.in` files:
 | `@KMCMAKE_RUNTIME_SIMD_LEVEL@` | kmcmake_option | Target SIMD level |
 | `@PACKAGE_INIT@` | CMakePackageConfigHelpers | Package init snippet |
 
+## Build Flow
+
+1. `project()` sets project name and version
+2. `include(kmcmake_module)` loads framework (`kmcmake_option.cmake` + tools)
+3. `include(myproj_user_option OPTIONAL)` — **options** (may override `KMCMAKE_*`, add project `option()`)
+4. `include(myproj_deps)` — **deps gated by those options** (`KMCMAKE_USE_CPM` → `*_cpm.cmake`, then `find_package`)
+5. `include(myproj_cxx_config)` — **flags from options + deps** → `KMCMAKE_CXX_OPTIONS`
+6. `configure_file(version.h.in)`
+7. `add_subdirectory(myproj)` — consume `KMCMAKE_DEPS_LINK` / `KMCMAKE_CXX_OPTIONS` only
+8. `tests` / `benchmark` / `examples` if the matching `KMCMAKE_BUILD_*` is ON
+
+Vanilla CMake mapping: `docs/AI_MIGRATE.md`.
+
 ## Directory Layout
 
 ```
 project/
 ├── CMakeLists.txt              # Entry: includes kmcmake_module + user cmake/
-├── CMakePresets.json
+├── CMakePresets.json           # empty / cpm / vcpkg × Ninja + -make
 ├── .clang-format               # Default style (WebKit-based, same as xhash)
 ├── docs/
-│   ├── AI.md                   # AI context (this file)
-│   ├── c_cpp_project_rules.md  # C/C++ source & project rules
-│   └── AI_UPGRADE*.md          # Upgrade guides
+│   ├── AI.md
+│   ├── AI_MIGRATE.md           # plain CMake → kmcmake
+│   ├── AI_UPGRADE.md           # existing kmcmake → 1.7
+│   ├── VCPKG.md                # standard vcpkg/vckgctl port
+│   ├── vcpkg.json              # example port manifest (hadar)
+│   ├── portfile.cmake          # example portfile (hadar)
+│   └── c_cpp_project_rules.md
 ├── kmcmake/                    # Framework layer — DO NOT MODIFY
 │   ├── kmcmake_module.cmake    # Module entry point
 │   ├── kmcmake_option.cmake    # Global options (BUILD_SHARED, SIMD level, etc.)
@@ -141,33 +160,13 @@ project/
 │   ├── myproj_cpack_config.cmake  # Packaging config
 │   └── myproj_config.cmake.in     # Export template
 ├── myproj/                     # Source code
-│   ├── CMakeLists.txt
-│   ├── foo.h / foo.cc
-│   ├── main.cc
-│   └── version.h (generated from .in)
-├── tests/
-├── benchmark/
-└── examples/
+│   ├── CMakeLists.txt          # default: kmcmake_cc_interface NAME skills
+│   ├── skills.h
+│   └── version.h.in
+├── tests/                      # default: configure_file(config.h.in) only
+├── benchmark/                  # default: configure_file(config.h.in) only
+└── examples/                   # stub unless -DKMCMAKE_GEN_EXAMPLES=ON
 ```
-
-## Build Flow
-
-1. `project()` sets project name and version
-2. `include(kmcmake_module)` loads framework:
-   - `kmcmake_option.cmake` — user-visible options
-   - `default_setting.cmake` — utility functions + install dirs
-   - all `kmcmake_cc_*.cmake` tools
-3. `include(myproj_user_option OPTIONAL)` — user overrides (may set `KMCMAKE_RUNTIME_SIMD_LEVEL`, etc.)
-4. `include(myproj_deps)` — optional CPM (`KMCMAKE_USE_CPM`), then `find_package` / system libs
-5. `include(myproj_cxx_config)`:
-   - `kmcmake_compiler_flags.cmake` → `KMCMAKE_BASE_CXX_FLAGS`
-   - `kmcmake_arch.cmake` → `KMCMAKE_SIMD_CXX_FLAGS` + `KMCMAKE_ARCH_ENABLE_*`
-   - aggregates → `KMCMAKE_CXX_OPTIONS`
-6. `configure_file(version.h.in)` — generates version header with SIMD macros
-7. `add_subdirectory(myproj)` — builds source targets
-8. `add_subdirectory(tests)` — if testing enabled
-9. `add_subdirectory(benchmark)` — if benchmark enabled
-10. `add_subdirectory(examples)` — if examples enabled
 
 ## SIMD Architecture
 
@@ -193,10 +192,10 @@ To add a new architecture:
 
 | Situation | Doc |
 |-----------|-----|
-| Pre-v1 flat layout → layered `kmcmake/` + `cmake/` | `docs/AI_UPGRADE.md` |
-| Already on 1.4.x / early 1.5 → **1.5.0+** (ops for AI) | `docs/AI_UPGRADE_1_5.md` |
-
-`AI_UPGRADE_1_5.md` is step-only: generate skeleton under `/tmp/<proj>_upgrade`, replace `kmcmake/`, copy `CMakePresets.json`. Do not install the template into the real project tree.
+| Plain CMake → kmcmake (`option` / deps / flags) | `docs/AI_MIGRATE.md` |
+| Existing kmcmake → **1.7.0** | `docs/AI_UPGRADE.md` |
+| vcpkg port | `docs/VCPKG.md` + `docs/vcpkg.json` + `docs/portfile.cmake` |
+| Old 1.5 procedure URL | `docs/AI_UPGRADE_1_5.md` (stub → `AI_UPGRADE.md`) |
 
 ## skills.h Convention
 
@@ -221,21 +220,6 @@ principles, and key conventions.
 - `@CHANGEME@` is replaced by the project name passed via `-DCHANGEME=`
 - `@CHANGEME_UP@` is the uppercase variant
 - Non-`.in` files are copied verbatim during `cmake --install`
-
-Every kmcmake-based project includes a `skills.h` file in its main source directory.
-This file is a human/AI-readable summary of the project's public API, design
-principles, and key conventions.
-
-**For AI agents:**
-- Read `skills.h` first — it replaces scanning all source files
-- For dependency libraries, look for their `skills.h` at `<dep>/include/<dep>/skills.h`
-- Style: all entries use `///` (Doxygen triple-slash) comments in English
-- The file contains the project summary, build API overview, configuration variables,
-  and generated macro reference
-
-**For users:**
-- Add your project-specific API documentation to `skills.h` using the same `///` style
-- Keep it concise — it should be readable at a glance
 
 ---
 
@@ -288,12 +272,10 @@ Header-only library (no compiled sources).
 ```cmake
 kmcmake_cc_interface(
     PUBLIC
-    NAME api
+    NAME skills
     NAMESPACE myproj
-    HEADERS api.h api.hpp
+    HEADERS skills.h version.h
     CXXOPTS ${KMCMAKE_CXX_OPTIONS}
-    LINKS myproj::core
-    INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 ```
 
@@ -420,10 +402,14 @@ Exports `${NAME}_HDRS` / `${NAME}_SRCS`. Aggregate API: `xxd_gen_files()` return
 ## CPM (optional dependency fetch)
 
 Vendored official [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) release lives at
-`kmcmake/tools/CPM.cmake` (unmodified). **Default off** — enable explicitly:
+`kmcmake/tools/CPM.cmake` (unmodified). **Default off** — enable explicitly
+(`--preset=cpm*` or `-DKMCMAKE_USE_CPM=ON`). Use CPM for **small projects**, or
+when the only extra packages are **test-only** (`gtest` / `doctest`) and are
+**not shipped**. Use **vcpkg** (`--preset=vcpkg*`) for large-scale dependency
+management.
 
 ```cmake
-# cmake/<project>_user_option.cmake  OR  -DKMCMAKE_USE_CPM=ON
+# cmake/<project>_user_option.cmake  OR  --preset=cpm / -DKMCMAKE_USE_CPM=ON
 set(KMCMAKE_USE_CPM ON CACHE BOOL "" FORCE)
 ```
 
@@ -436,10 +422,10 @@ The generated template enables **fmt 10.2.1** (`GIT_TAG 10.2.1`, no `v` prefix) 
 `*_cpm.cmake` as the default smoke package; CI job `cpm+xxd` runs
 `base_cpm_test` + `base_xxd_test`. Replace packages as needed for real projects.
 
-No auto-detection of kmpkg/vcpkg/toolchain — overlapping managers are the
-user's choice. Mapping from a kmpkg manifest: use `kmpkg.json` +
-`kmpkg-configuration.json` baseline, then `kmpkg depend-info` topological
-order to fill `*_cpm.cmake`.
+No auto-detection of vcpkg/toolchain — overlapping managers are the
+user's choice. Use `--preset=vcpkg*` when `VCPKG_ROOT` is set. Mapping from a
+kmpkg manifest: use `vcpkg.json` + `kmpkg-configuration.json` baseline, then
+`kmpkg depend-info` topological order to fill `*_cpm.cmake`.
 
 ---
 

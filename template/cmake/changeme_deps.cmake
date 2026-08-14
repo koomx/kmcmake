@@ -50,7 +50,7 @@ set(KMCMAKE_SYSTEM_DYLINK)
 if (APPLE)
     find_library(CoreFoundation CoreFoundation)
     list(APPEND KMCMAKE_SYSTEM_DYLINK ${CoreFoundation})
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+else (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     list(APPEND KMCMAKE_SYSTEM_DYLINK rt dl)
 endif ()
 

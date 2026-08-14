@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 ####################################################################################
-# generate by kumo cmake building system kmkdo tools kmdo
+# generate by kmcmake (vckgctl gencmake pro_name -o your/path)
 # https://github.com/koomx/kmcmake
 ####################################################################################
 
@@ -160,7 +160,6 @@ if(NOT PYTHON_EXTENSION)
 
     install(FILES ${PROJECT_BINARY_DIR}/package/${PROJECT_NAME}.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 endif()
-kmcmake_print("@CHANGEME@ cmake build system is created by kmcmake package manager tools")
+kmcmake_print("@CHANGEME@ cmake build system is created by kmcmake")
 kmcmake_print("kmcmake: https://github.com/koomx/kmcmake")
-kmcmake_print("tools: https://github.com/koomx/kmdo")
-kmcmake_print("docs: https://pub.kumose.cc/kmdo")
+kmcmake_print("generate: vckgctl gencmake  or  cmake -S <kmcmake>/template")

@@ -11,11 +11,13 @@
 
 ## 生成项目
 
-### 推荐方式：使用 `kmdo`
+### 推荐方式：使用 `vckgctl`
 
 ```bash title="bash"
-kmdo kmpkg gencmake -n your-project-name -o your-path
+vckgctl gencmake -n your-project-name -o your-path
 ```
+
+教学例子（foo / xxd / tests）：生成时加 `-DKMCMAKE_GEN_EXAMPLES=ON`。
 
 ### 备用方式：从模板手动生成
 

@@ -6,7 +6,7 @@
 
 [Website / docs](https://pub.kumose.cc/kmcmake/) · [Changelog](CHANGELOG.md)
 
-**Current template version: 1.6.0**
+**Current template version: 1.7.0**
 
 ## What is kmcmake?
 
@@ -20,13 +20,13 @@ You generate a project once from `template/`. Each generated repo has two layers
 | User config | `cmake/` | Your deps, options, flags aggregation |
 | Product code | `<project>/`, `tests/`, … | Your sources |
 
-Day-to-day you declare targets with helpers such as `kmcmake_cc_library`, `kmcmake_cc_binary`, `kmcmake_cc_test`, and (optionally) wire [kmpkg](https://github.com/koomx/kmpkgcore) via `CMakePresets.json` (`KMPKG_CMAKE`). kmpkg is optional: empty toolchain still works with system packages. For FetchContent-style deps, set `KMCMAKE_USE_CPM=ON` and edit `cmake/*_cpm.cmake` (vendored [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) under `kmcmake/tools/`).
+Day-to-day you declare targets with helpers such as `kmcmake_cc_library`, `kmcmake_cc_binary`, `kmcmake_cc_test`. Pick a preset channel: empty (`default` / `test` / …), CPM (`cpm` / `cpm-test` / …), or vcpkg (`vcpkg` / `vcpkg-test` / …, needs `VCPKG_ROOT`). Names without `-make` use Ninja (`build/`); `-make` uses Unix Makefiles (`build-make/`). Edit `cmake/*_cpm.cmake` for CPM packages (vendored [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) under `kmcmake/tools/`).
 
 ## Features
 
 - Layered template: upgrade-safe `kmcmake/` vs editable `cmake/`
 - Target macros: library (static + optional `SHARE`), object, interface, binary, test, benchmark, protobuf
-- Presets: `default` (Unix Makefiles → `build/`) and `ninja` (→ `build-ninja/`), including Windows MSVC + Ninja
+- Presets: Ninja default (`build/`); Makefile twins with `-make` (`build-make/`). Channels: empty / CPM / vcpkg × `default`/`test`/`test-bm`/`all`
 - Per-arch SIMD detection (x86 / ARM) → `KMCMAKE_CXX_OPTIONS` and generated `version.h` macros
 - Packaging hooks (CPack / deb / rpm) and optional Python packaging scripts
 - CI via [x-ci](https://github.com/koomx/x-ci) `@v2` (Linux glibc/musl/CentOS, macOS, Windows MSVC)
@@ -36,26 +36,28 @@ Day-to-day you declare targets with helpers such as `kmcmake_cc_library`, `kmcma
 
 | Doc | Purpose |
 |-----|---------|
-| [AI.md](template/docs/AI.md) | AI context: constraints, layout, API, conventions |
+| [AI.md](template/docs/AI.md) | AI context: constraints, layout, API |
+| [AI_MIGRATE.md](template/docs/AI_MIGRATE.md) | Plain CMake → kmcmake (`user_option` / `deps` / `cxx_config`) |
+| [AI_UPGRADE.md](template/docs/AI_UPGRADE.md) | Existing kmcmake → **1.7.0** (checklist) |
+| [VCPKG.md](template/docs/VCPKG.md) | Standard vcpkg/vckgctl port; worked example [`vcpkg.json`](template/docs/vcpkg.json) + [`portfile.cmake`](template/docs/portfile.cmake) |
 | [c_cpp_project_rules.md](template/docs/c_cpp_project_rules.md) | C/C++ source and project rules |
-| [AI_UPGRADE.md](template/docs/AI_UPGRADE.md) | Legacy → layered `kmcmake/` + `cmake/` migration |
-| [AI_UPGRADE_1_5.md](template/docs/AI_UPGRADE_1_5.md) | 1.4.x / early 1.5 → **1.5.0+** upgrade (ops for AI) |
 
 ### For AI agents
 
 **Before changing this repo or upgrading a consumer project, read the docs above yourself** (do not guess from memory):
 
 1. Always start with [`template/docs/AI.md`](template/docs/AI.md) and [`c_cpp_project_rules.md`](template/docs/c_cpp_project_rules.md).
-2. Upgrading an existing 1.4-style project → follow [`template/docs/AI_UPGRADE_1_5.md`](template/docs/AI_UPGRADE_1_5.md) (skeleton under `/tmp`, replace `kmcmake/`, copy `CMakePresets.json`).
-3. Still on pre-v1 flat layout → [`template/docs/AI_UPGRADE.md`](template/docs/AI_UPGRADE.md) first.
+2. New project from plain CMake → [`template/docs/AI_MIGRATE.md`](template/docs/AI_MIGRATE.md).
+3. Upgrading an existing kmcmake project → [`template/docs/AI_UPGRADE.md`](template/docs/AI_UPGRADE.md).
+4. Publishing as a vcpkg port → [`template/docs/VCPKG.md`](template/docs/VCPKG.md).
 
 These files are installed into generated projects as `docs/` when you run `cmake --install` from `template/`.
 
 ## Requirements
 
 - CMake **≥ 3.31** to *generate* from this repo’s `template/`
-- Generated projects: CMake **≥ 3.20**, C++17+ toolchain (GCC / Clang / AppleClang / MSVC)
-- Optional: [kmpkg](https://github.com/koomx/kmpkgcore), [kmdo](https://github.com/koomx/kmdo), Ninja
+- Generated projects: CMake **≥ 3.31**, C++17+ toolchain (GCC / Clang / AppleClang / MSVC)
+- Optional: [vckgctl](https://github.com/koomx) (`gencmake`), Ninja
 
 ## Quick start
 
@@ -64,21 +66,25 @@ These files are installed into generated projects as `docs/` when you run `cmake
 ```bash
 cmake -S ./template -B build-template -DCHANGEME=myproject
 cmake --install build-template --prefix /path/to/myproject
+# teaching demos (foo / xxd / tests): add -DKMCMAKE_GEN_EXAMPLES=ON
 ```
 
-### Or via kmdo (if installed)
+### Or via vckgctl
 
 ```bash
-kmdo kmpkg gencmake -n myproject -o /path/to/myproject
+vckgctl gencmake -n myproject -o /path/to/myproject
 ```
 
 ### Build a generated project
 
 ```bash
 cd /path/to/myproject
-# Optional: export KMPKG_HOME / KMPKG_CMAKE after kmpkg bootstrap
-cmake --preset=default -DKMCMAKE_BUILD_TEST=ON    # or --preset=ninja
-cmake --build build --parallel                    # or build-ninja
+cmake --preset=default          # Ninja, empty deps, option defaults
+# cmake --preset=test           # Ninja + tests
+# cmake --preset=cpm-test       # CPM + tests
+# cmake --preset=vcpkg-all      # vcpkg + tests/benchmark/examples (needs VCPKG_ROOT)
+# cmake --preset=default-make   # Unix Makefiles → build-make/
+cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
@@ -89,7 +95,7 @@ Edit user config under `cmake/` (`*_deps.cmake`, `*_user_option.cmake`, …). De
 ```
 myproject/
 ├── CMakeLists.txt          # Entry: kmcmake_module + cmake/*
-├── CMakePresets.json       # default + ninja (kmpkg via $KMPKG_CMAKE)
+├── CMakePresets.json       # empty / cpm / vcpkg × Ninja + -make
 ├── docs/                   # AI.md, c_cpp_project_rules.md, upgrade guides
 ├── kmcmake/                # Framework — replace on upgrade
 │   ├── kmcmake_module.cmake
@@ -108,7 +114,7 @@ myproject/
 
 ## Upgrading an existing project
 
-Do **not** overwrite `cmake/` or product sources. Generate a fresh skeleton under `/tmp`, then replace `kmcmake/` and copy `CMakePresets.json`. Full steps: [AI_UPGRADE_1_5.md](template/docs/AI_UPGRADE_1_5.md).
+Do **not** overwrite `cmake/` or product sources. Generate a fresh skeleton under `/tmp`, then replace `kmcmake/` and copy `CMakePresets.json`. Checklist: [AI_UPGRADE.md](template/docs/AI_UPGRADE.md). Plain CMake import: [AI_MIGRATE.md](template/docs/AI_MIGRATE.md).
 
 ## License
 

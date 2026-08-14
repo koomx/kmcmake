@@ -14,7 +14,7 @@ read this together with `docs/AI.md` and `<project>/skills.h`.
 1. Read `skills.h` first (project API / conventions)
 2. Prefer editing existing files over adding new ones
 3. Match local style in the files you touch; do not drive-by reformat
-4. Do not add dependencies without asking (`find_package`, CPM, kmpkg, system libs)
+4. Do not add dependencies without asking (`find_package`, CPM, vcpkg, system libs)
 
 ## Formatting
 
@@ -57,7 +57,7 @@ read this together with `docs/AI.md` and `<project>/skills.h`.
 
 ## Language & Style
 
-- C++ **17** or newer as set by the project; do not silently raise the standard
+- C++ **17** default if `CMAKE_CXX_STANDARD` is unset; honor `-DCMAKE_CXX_STANDARD=`, presets, parent project, or `*_user_option.cmake`. Do not silently raise a standard the outer build already set.
 - Prefer headers with `#pragma once`
 - Prefer `nullptr`, `override`, `= delete`, scoped enums; avoid macros when a
   constant or inline function works
@@ -86,8 +86,9 @@ docs/               # AI.md, this file, upgrade guides
 
 | Concern | Where it belongs | Must not live in |
 |---------|------------------|------------------|
-| **Project / library dependencies** (`find_package`, CPM list → `KMCMAKE_DEPS_LINK`, system libs) | `cmake/*_deps.cmake` (+ `cmake/*_cpm.cmake` when `KMCMAKE_USE_CPM`) | `<project>/CMakeLists.txt`, random `cmake/*.cmake`, examples |
-| **C++ compile options** (`KMCMAKE_CXX_OPTIONS`, base/SIMD/user flags) | `cmake/*_cxx_config.cmake` | scattered `CXXOPTS` hard-codes, ad-hoc `add_definitions`, per-target flag lists in main sources |
+| **Project options** (`option()`, `KMCMAKE_*` CACHE overrides) | `cmake/*_user_option.cmake` (loaded first) | root `CMakeLists.txt` after deps, `kmcmake/`, `<project>/CMakeLists.txt` |
+| **Project / library dependencies** (`find_package` gated by those options, CPM list → `KMCMAKE_DEPS_LINK`, system libs) | `cmake/*_deps.cmake` (+ `cmake/*_cpm.cmake` when `KMCMAKE_USE_CPM`) | `<project>/CMakeLists.txt`, random `cmake/*.cmake`, examples |
+| **C++ compile options** (from options + deps → `KMCMAKE_CXX_OPTIONS`) | `cmake/*_cxx_config.cmake` | scattered `CXXOPTS` hard-codes, ad-hoc `add_definitions`, per-target flag lists in main sources |
 
 - Main product targets under `<project>/` only **consume** `KMCMAKE_DEPS_LINK` / `KMCMAKE_CXX_OPTIONS`; they do not introduce new packages or global flag policy
 - **Allowed exception:** `tests/CMakeLists.txt` and `benchmark/CMakeLists.txt` may `find_package` / link test-only or benchmark-only deps (e.g. gtest, benchmark) and set local `CXXOPTS` / `LINKS` for those targets
@@ -107,18 +108,17 @@ Three channels (user chooses explicitly; no auto-detection). **Wire them only in
 
 | Channel | How |
 |---------|-----|
-| kmpkg / vcpkg | `CMAKE_TOOLCHAIN_FILE` / presets |
-| System | `find_package` in `cmake/*_deps.cmake` |
-| CPM | `KMCMAKE_USE_CPM=ON` + `cmake/*_cpm.cmake` |
+| System | `find_package` in `cmake/*_deps.cmake`; presets `default` / `test` / `test-bm` / `all` |
+| CPM | `--preset=cpm*` (`KMCMAKE_USE_CPM=ON` + `cmake/*_cpm.cmake`). Small projects, or test-only deps (`gtest` / `doctest`) that are not part of the deployed product. |
+| vcpkg | `--preset=vcpkg*` (`VCPKG_ROOT` → `vcpkg.cmake`). Large-scale dependency management. |
+
+Unsuffixed names are Ninja (`build/`); `-make` is Unix Makefiles (`build-make/`). `default` / `default-make` set no cache variables. Unsuffixed `cpm` / `vcpkg` build libraries only.
 
 - Prefer existing project patterns; do not mix the same library from two channels
-- For CPM lists mirroring kmpkg: `kmpkg.json` + baseline + `depend-info` order
+- For CPM lists mirroring kmpkg: `vcpkg.json` + baseline + `depend-info` order
 - Host-only tools (e.g. `kmpkg-cmake`) do not belong in `*_cpm.cmake`
 - Test/benchmark-only packages may be resolved under `tests/` or `benchmark/` (see ownership table)
-- **Do not** run `kmpkg install` (or equivalent) in the project directory. When kmpkg is
-  selected, presets already set `CMAKE_TOOLCHAIN_FILE` (`KMPKG_CMAKE`); **CMake configure
-  installs/resolves dependencies via that toolchain**. Manual `kmpkg install` in-tree
-  duplicates work and can desync the build tree
+- **Do not** run `vcpkg install` / `kmpkg install` in the project directory. The selected preset’s toolchain (if any) resolves deps on **CMake configure**. Manual in-tree install duplicates work and can desync the build tree
 
 ## Testing & Verification
 

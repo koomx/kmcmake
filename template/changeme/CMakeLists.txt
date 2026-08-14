@@ -12,70 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-###########################################################################
-# below are examples, after initialization, modify it to your own.
-###########################################################################
-###kmcmake_example
 
-# Embed static assets as std::string_view (generated *.xxd.h/*.xxd.cc under this dir).
-kmcmake_cc_xxd(
-        NAME        gen_assets
-        NAMESPACE   ${PROJECT_NAME}
-        OUTDIR      ${CMAKE_CURRENT_SOURCE_DIR}
-        INCLUDEBASE ${PROJECT_SOURCE_DIR}
-        ASSETDIR    ${CMAKE_CURRENT_SOURCE_DIR}
-        FILES
-            assets/hello.txt
-)
-
-kmcmake_cc_library(
-        NAMESPACE ${PROJECT_NAME}
-        NAME assets
-        SOURCES
-        ${gen_assets_SRCS}
-        PINCLUDES
-        ${PROJECT_SOURCE_DIR}
-        CXXOPTS
-        ${KMCMAKE_CXX_OPTIONS}
-)
-
-kmcmake_cc_library(
-        NAMESPACE ${PROJECT_NAME}
-        NAME foo
-        SHARE
-        SOURCES
-        foo.cc
-        CXXOPTS
-        ${KMCMAKE_CXX_OPTIONS}
-        PLINKS
-        ${KMCMAKE_DEPS_LINK}
-        PUBLIC
-)
+# Default exported target (install(EXPORT) requires at least one).
+# Teaching demos (foo / xxd / binaries) live in CMakeLists.examples.txt
+# and are installed only when generating with -DKMCMAKE_GEN_EXAMPLES=ON.
 
 kmcmake_cc_interface(
         NAMESPACE ${PROJECT_NAME}
-        NAME api
+        NAME skills
         HEADERS
-        api.h
+        skills.h
+        version.h
         CXXOPTS
         ${KMCMAKE_CXX_OPTIONS}
         PUBLIC
 )
-
-kmcmake_cc_binary(
-        NAMESPACE ${PROJECT_NAME}
-        NAME shared_main
-        SOURCES
-        main.cc
-        CXXOPTS
-        ${KMCMAKE_CXX_OPTIONS}
-        DEPS
-        ${PROJECT_NAME}::foo
-        LINKS
-        ${KMCMAKE_DEPS_LINK}
-        ${PROJECT_NAME}::foo
-        PUBLIC
-)
-
-
-###kmcmake_example

@@ -1,0 +1,80 @@
+# Copyright (C) Kumo inc. and its affiliates.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+###########################################################################
+# Teaching demos — installed as <project>/CMakeLists.txt when
+# -DKMCMAKE_GEN_EXAMPLES=ON. Do not delete this file from the template.
+###########################################################################
+
+kmcmake_cc_interface(
+        NAMESPACE ${PROJECT_NAME}
+        NAME skills
+        HEADERS
+        skills.h
+        version.h
+        CXXOPTS
+        ${KMCMAKE_CXX_OPTIONS}
+        PUBLIC
+)
+
+# Embed static assets as std::string_view (generated *.xxd.h/*.xxd.cc under this dir).
+kmcmake_cc_xxd(
+        NAME        gen_assets
+        NAMESPACE   ${PROJECT_NAME}
+        OUTDIR      ${CMAKE_CURRENT_SOURCE_DIR}
+        INCLUDEBASE ${PROJECT_SOURCE_DIR}
+        ASSETDIR    ${CMAKE_CURRENT_SOURCE_DIR}
+        FILES
+            assets/hello.txt
+)
+
+kmcmake_cc_library(
+        NAMESPACE ${PROJECT_NAME}
+        NAME assets
+        SOURCES
+        ${gen_assets_SRCS}
+        PINCLUDES
+        ${PROJECT_SOURCE_DIR}
+        CXXOPTS
+        ${KMCMAKE_CXX_OPTIONS}
+)
+
+kmcmake_cc_library(
+        NAMESPACE ${PROJECT_NAME}
+        NAME foo
+        SHARE
+        SOURCES
+        foo.cc
+        CXXOPTS
+        ${KMCMAKE_CXX_OPTIONS}
+        PLINKS
+        ${KMCMAKE_DEPS_LINK}
+        PUBLIC
+)
+
+
+kmcmake_cc_binary(
+        NAMESPACE ${PROJECT_NAME}
+        NAME shared_main
+        SOURCES
+        main.cc
+        CXXOPTS
+        ${KMCMAKE_CXX_OPTIONS}
+        DEPS
+        ${PROJECT_NAME}::foo
+        LINKS
+        ${KMCMAKE_DEPS_LINK}
+        ${PROJECT_NAME}::foo
+        PUBLIC
+)

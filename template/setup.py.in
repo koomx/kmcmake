@@ -18,13 +18,13 @@ import os
 from wheel.cli import pack_f
 
 cmake_args_list = []
-km_root = os.getenv('KMPKG_CMAKE', 'no')
-km_tool=''
-if km_root != 'no':
-    km_tool = '-DCMAKE_TOOLCHAIN_FILE=' + km_root
-
-if km_tool != '':
-    cmake_args_list.append(km_tool)
+toolchain = os.getenv("CMAKE_TOOLCHAIN_FILE")
+if not toolchain:
+    vcpkg_root = os.getenv("VCPKG_ROOT")
+    if vcpkg_root:
+        toolchain = os.path.join(vcpkg_root, "scripts", "buildsystems", "vcpkg.cmake")
+if toolchain:
+    cmake_args_list.append("-DCMAKE_TOOLCHAIN_FILE=" + toolchain)
 
 setup(
     name="@CHANGEME@",

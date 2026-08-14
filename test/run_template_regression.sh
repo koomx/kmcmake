@@ -19,7 +19,7 @@ reset_workdir() {
 
 generate_project() {
   log "Generate template project"
-  cmake -S "${ROOT_DIR}/template" -B "${WORK_DIR}/template_build" -DCHANGEME="${GEN_NAME}"
+  cmake -S "${ROOT_DIR}/template" -B "${WORK_DIR}/template_build" -DCHANGEME="${GEN_NAME}" -DKMCMAKE_GEN_EXAMPLES=ON
   cmake --install "${WORK_DIR}/template_build" --prefix "${GEN_DIR}"
 }
 

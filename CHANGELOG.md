@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-15 — v1.7.0
+
+### Docs
+- `AI_MIGRATE.md`: plain CMake → kmcmake (`user_option` → `deps` → `cxx_config`).
+- `AI_UPGRADE.md`: existing kmcmake → 1.7 checklist (`/tmp` skeleton, replace `kmcmake/`).
+- `VCPKG.md`: overlay/registry port with `vcpkg_cmake_configure` / `install` / `config_fixup` only.
+- `AI_UPGRADE_1_5.md` is a stub pointing at `AI_UPGRADE.md`.
+
 ## 2026-07-25 — v1.6.0
 
 ### Features
@@ -13,6 +21,8 @@
 - `.gitattributes`: keep `assets/**` as binary (`-text`) so Windows does not CRLF-convert embedded files; `base_xxd_test` accepts LF or CRLF.
 - Ship `.clang-format` (from xhash / WebKit-based style) at project root by default for IDE and `clang-format` tooling.
 - Added `docs/c_cpp_project_rules.md` — C/C++ source, layout, deps, and AI edit rules for generated projects.
+- `CMakePresets.json`: Ninja is default (`build/`); Unix Makefiles use `-make` (`build-make/`). Three dep channels (empty / CPM / vcpkg) × `default`/`test`/`test-bm`/`all`. No `KMPKG_CMAKE` injection.
+- Default generate installs only `${PROJECT}::skills` (`skills.h` + `version.h`). Teaching demos (foo / xxd / tests / examples) require `-DKMCMAKE_GEN_EXAMPLES=ON`. Generate via `vckgctl gencmake` (kmdo deprecated).
 
 ## 2026-07-21 — v1.5.1
 
