@@ -31,7 +31,7 @@ This project uses [kmpkg](https://github.com/koomx/kmcmake) for dependency manag
 
 ### 1.Configure the project (optional)
 
-* For the complete dependencies, refer to [`kmpkg.json`](kmpkg.json)
+* For the complete dependencies, refer to [`vcpkg.json`](kmpkg.json)
 * To update the dependency baseline, modify the `baseline` in `default-registry` of [`kmpkg-configuration.json`](kmpkg-configuration.json)
 * the `baseline` can be obtained via `git log`.
 

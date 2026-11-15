@@ -27,7 +27,7 @@ endif ()
 option(KMCMAKE_GEN_EXAMPLES "install teaching demos into the generated project" OFF)
 
 string(TIMESTAMP CURRENT_DATE "%Y-%m-%d")
-set(TM_KMCMAKE_VERSION 1.7.0)
+set(TM_KMCMAKE_VERSION 1.7.1)
 string(TOUPPER ${CHANGEME} CHANGEME_UP)
 string(TOLOWER ${CHANGEME} CHANGEME_LOW)
 

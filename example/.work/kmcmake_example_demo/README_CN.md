@@ -31,7 +31,7 @@ kmpkg 会自动处理第三方库下载、依赖查找、编译标志配置等�
 
 ### 1. 配置项目(可选)
 
-- 完整的依赖请参见[`kmpkg.json`](kmpkg.json)
+- 完整的依赖请参见[`vcpkg.json`](kmpkg.json)
 - 更新依赖基线请参见[`kmpkg-configuration.json`](kmpkg-configuration.json) 修改
   `default-registry`的`baseline`
 - `baseline` 可通过 `git log` 获取最新提交
